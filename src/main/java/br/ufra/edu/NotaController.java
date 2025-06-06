@@ -1,10 +1,10 @@
 package br.ufra.edu;
 
-import java.util.ArrayList;
 import java.util.List;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.HttpStatusCode;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -20,59 +20,46 @@ import org.springframework.web.server.ResponseStatusException;
 @RequestMapping("/notas")
 public class NotaController {
 	
-	private List<Nota> lista = new ArrayList<>();
+	@Autowired
+	private INotas notas;
 	
 	@GetMapping
 	public List<Nota> listar(){
-		return lista;
+		return notas.findAll();
 	}
 	
 	@GetMapping("/{id}")
-	public Nota retornaUmaNota(@PathVariable Long id) {
-		return lista.stream().
-				filter(nota -> nota.getId().equals(id)).
-				findFirst().
-				orElseThrow(
-				()-> new 
-				ResponseStatusException(HttpStatus.NOT_FOUND, 
-						"Nota não encontrada"));
+	public ResponseEntity<Nota> retornaUmaNota(@PathVariable Long id) {
+		return notas.findById(id)
+			      .map(ResponseEntity::ok)
+			      .orElse(ResponseEntity.notFound().build());
 	}
 	
 	@PostMapping
 	public Nota adicionar(@RequestBody Nota nota) {
-		nota.setId((long) (lista.size()+1));
-		lista.add(nota);
-		return nota;
+		return notas.save(nota);
 	}
 	
-	@PutMapping("/{id}")
-	public Nota atualizar(@PathVariable Long id, 
-			@RequestBody Nota notaNova) {
-		Nota notaexistente = lista.stream().
-				filter(nota -> nota.getId().equals(id)).
-				findFirst().
-				orElseThrow(
-				()-> new 
-				ResponseStatusException(HttpStatus.NOT_FOUND, 
-						"Nota não encontrada"));
-		notaexistente.setAluno(notaNova.getAluno());
-		notaexistente.setDisciplina(notaNova.getDisciplina());
-		notaexistente.setValor(notaNova.getValor());
-		return notaexistente;
-	}
+	 @PutMapping("/{id}")
+	    public ResponseEntity<Nota> atualizar(@PathVariable Long id, @RequestBody Nota notaAtualizada) {
+	        return notas.findById(id)
+	                .map(nota -> {
+	                    nota.setAluno(notaAtualizada.getAluno());
+	                    nota.setDisciplina(notaAtualizada.getDisciplina());
+	                    Nota atualizado = notas.save(nota);
+	                    return ResponseEntity.ok(atualizado);
+	                })
+	                .orElse(ResponseEntity.notFound().build());
+	    }
 	
 	
 	@DeleteMapping("/{id}")
 	@ResponseStatus(HttpStatus.NO_CONTENT)
 	public void remover(@PathVariable Long id) {
-		Nota nota = lista.stream().
-				filter(n -> n.getId().equals(id)).
-				findFirst().
-				orElseThrow(
-				()-> new 
+		Nota nota = notas.findById(id).orElseThrow(()-> new 
 				ResponseStatusException(HttpStatus.NOT_FOUND, 
 						"Nota não encontrada"));
-		lista.remove(nota);
+		notas.delete(nota);
 	}
 
 }
